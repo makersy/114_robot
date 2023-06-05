@@ -1,5 +1,19 @@
 # 114预约挂号平台实时刷新工具
 
+#### 0. 创建配置文件
+
+```bash
+cp config.json.example config.json
+```
+
+必填项：
+- cookie：网站cookie
+- require：需要通知的日期，格式为 yyyy-MM-dd
+
+如需通知，选填：
+- os_list：门诊网址
+- lark_webhook：飞书机器人webhook地址
+
 #### 1. 自主登陆114获取cookie信息
 
 * 114网址：https://www.114yygh.com/
@@ -8,19 +22,19 @@
 
 ![](images/F9D7620F-E6D6-430C-A419-9700181294CC.png)
 
-找到Application选项卡，然后找到cookie为`cmi-user-ticket`的cookie，将Key和Value通过等于号(=)拼装起来拼。运行程序第一步键入该值！
+找到Application选项卡，然后找到cookie为`cmi-user-ticket`的cookie，将Key和Value通过等于号(=)拼装起来拼。
 
 ![](images/5DB58EC7-A7AB-4471-9604-D6BD8E718806.png)
 
 #### 2. 选择要实时检测的门诊网址
 
-选择自己希望查询的门诊科室，然后复制URL即可，例如：
+选择自己希望查询的门诊科室，然后复制URL，填入os_list，例如：
 
 * https://www.114yygh.com/hospital/126/c1df24b5f98d8dc660112aa1f81f24e4/200000264/source
 * https://www.114yygh.com/hospital/122/d3bbb5cb1ac8a26829dd4e23b88f839a/200044316/source
 * https://www.114yygh.com/hospital/3/57c6654fe6c60748d71f02ffacfadd1e/200047992/source
 
-必须点击到最细的科室级别，然后复制URL，否则无发进行解析。
+必须点击到最细的科室级别，然后复制URL，否则无法进行解析。
 
 ![](images/6D65B0A1-8980-4AEF-8596-C4AEB7FB87E4.png)
 

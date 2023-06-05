@@ -19,6 +19,10 @@ headers = {
 
 # 排除的日期
 exclude_date = []
+# 需求日期
+require_date = []
+# 飞书webhook
+lark_webhook = ""
 
 def parsing_url(url: str):
     """
@@ -42,11 +46,13 @@ def parsing_url(url: str):
         first_dept_code = url_split[5]
         second_dept_code = url_split[6]
 
-        week_os_info = request_week_os_info(first_dept_code, second_dept_code, hos_code)
+        week_os_info = request_week_os_info(
+            first_dept_code, second_dept_code, hos_code)
         if week_os_info is not None:
             md.update(week_os_info)
 
-        os_base_properties = request_os_properties(first_dept_code, second_dept_code, hos_code)
+        os_base_properties = request_os_properties(
+            first_dept_code, second_dept_code, hos_code)
         if os_base_properties is not None:
             md.update(os_base_properties)
 
@@ -73,14 +79,16 @@ def request_week_os_info(first_dept_code: str, second_dept_code: str, hos_code: 
     }
 
     request_url = "https://www.114yygh.com/web/product/list"
-
     response_data = None
+
     while True:
         try:
-            response_data = requests.post(request_url, headers=headers, data=json.dumps(body))
+            response_data = requests.post(
+                request_url, headers=headers, data=json.dumps(body))
             break
         except Exception as e:
-            print(f"request_week_os_info function response_data caught exception: {e}")
+            print(
+                f"request_week_os_info function response_data caught exception: {e}")
             time.sleep(5)
 
     response = None
@@ -88,10 +96,12 @@ def request_week_os_info(first_dept_code: str, second_dept_code: str, hos_code: 
         try:
             response = response_data.json()
         except Exception as e:
-            print(f"request_week_os_info function response caught exception: {e}")
+            print(
+                f"request_week_os_info function response caught exception: {e}")
             return None
 
     if response is None or response["resCode"] != 0:
+        print(f"request_week_os_info get wrong response: {response}")
         return None
 
     return response["data"]
@@ -109,7 +119,8 @@ def request_os_properties(first_dept_code: str, second_dept_code: str, hos_code:
 
     format_url = "https://www.114yygh.com/web/department/hos/detail?firstDeptCode={}&secondDeptCode={}&hosCode={}"
 
-    request_url = format_url.format(first_dept_code, second_dept_code, hos_code)
+    request_url = format_url.format(
+        first_dept_code, second_dept_code, hos_code)
 
     response_data = None
     while True:
@@ -117,7 +128,8 @@ def request_os_properties(first_dept_code: str, second_dept_code: str, hos_code:
             response_data = requests.get(request_url, headers=headers)
             break
         except Exception as e:
-            print(f"request_os_properties function response_data caught exception: {e}")
+            print(
+                f"request_os_properties function response_data caught exception: {e}")
             time.sleep(5)
 
     response = None
@@ -155,19 +167,24 @@ def all_info_of_table(request_os_list: list) -> Table:
 
     # 最近一周的日期 %Y-%m-%d
     week_of_name = []
+    week_of_table_header = []
     now = datetime.datetime.now()
     week_of_name.append(now.strftime("%Y-%m-%d"))
+    week_of_table_header.append(now.strftime("%Y%m%d-%a"))
+
     for value in range(1, 7):
         next_day = now + timedelta(days=value)
         week_of_name.append(next_day.strftime("%Y-%m-%d"))
+        week_of_table_header.append(next_day.strftime("%Y%m%d-%a"))
 
-    table = Table(box=box.ROUNDED, title="[aquamarine3]114 网上预约实时监控({})".format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))))
+    table = Table(box=box.ROUNDED, title="[aquamarine3]114 网上预约实时监控({})".format(
+        time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))))
 
     table.add_column('[light_sea_green]医院', justify="center")
     table.add_column('[light_sea_green]科部', justify="center")
     table.add_column('[light_sea_green]门诊', justify="center")
 
-    for value in week_of_name:
+    for value in week_of_table_header:
         table.add_column('[light_sea_green]' + value, justify="center")
 
     available = []
@@ -198,8 +215,9 @@ def all_info_of_table(request_os_list: list) -> Table:
                         week_of_dict[index] = "[green]可预约"
 
                         vc = [value, "可预约"]
-                        if value not in exclude_date:
-                            yuyue_available.append(" | " + ' | '.join(vc) + " |\n")
+                        if value in require_date:
+                            yuyue_available.append(
+                                " | " + ' | '.join(vc) + " |\n")
                     elif calendars["status"] == "SOLD_OUT":
                         # 约满
                         week_of_dict[index] = "[indian_red]已约满"
@@ -220,32 +238,25 @@ def all_info_of_table(request_os_list: list) -> Table:
                       week_of_dict[6])
 
     # dingding.send(available)
-    feishu.send(available)
+    feishu.send(lark_webhook, available)
     return table
 
-
 if __name__ == '__main__':
+    # 解析配置文件
+    with open('config.json') as file:
+        config = json.load(file)
+    cookie = config['cookie']
+    exclude = config['exclude']
+    os_list = config['os_list']
+    lark_webhook = config['lark_webhook']
+
     console = Console(color_system='256', style=None)
-
-    cookie = console.input(":surfer:[bold deep_sky_blue3] 请输入114北京市预约挂号统一平台授权凭证Cookie：\n")
     headers["Cookie"] = cookie
-
-    exclude = console.input(":surfer:[bold deep_sky_blue3] 请输入排除的日期，多个通过[,]分隔。(2022-12-12,2022-12-13)：\n")
     exclude_date = exclude.split(",")
-
-    os_list = []
-
-    url = console.input(":robot:[bold sky_blue2] 请键入要实时查询的门诊地址：\n")
-    os_list.append(url)
-
-    while True:
-        access_or_url = console.input(":heavy_exclamation_mark:[bold red1] 键入[Y]进行查询，否则继续批量录入门诊URL：\n")
-        if access_or_url == "Y":
-            break
-        else:
-            os_list.append(access_or_url)
-
+    require_date = config['require'].split(",")
+    
     os_data = None
+
     with console.status("[light_goldenrod3]正在首次加载数据...[/]", spinner="moon"):
         os_data = all_info_of_table(os_list)
 

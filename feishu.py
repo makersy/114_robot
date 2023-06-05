@@ -11,6 +11,7 @@ try:
 except AttributeError:
     JSONDecodeError = ValueError
 
+
 def is_not_null_and_blank_str(content):
     """
     非空字符串
@@ -21,6 +22,7 @@ def is_not_null_and_blank_str(content):
         return True
     else:
         return False
+
 
 class FeiShutalkChatbot(object):
     def __init__(self, webhook, secret=None, pc_slide=False, fail_notice=False):
@@ -62,9 +64,11 @@ class FeiShutalkChatbot(object):
         """
         try:
             post_data = json.dumps(data)
-            response = requests.post(self.webhook, headers=self.headers, data=post_data, verify=False)
+            response = requests.post(
+                self.webhook, headers=self.headers, data=post_data, verify=False)
         except requests.exceptions.HTTPError as exc:
-            logging.error("消息发送失败， HTTP error: %d, reason: %s" % (exc.response.status_code, exc.response.reason))
+            logging.error("消息发送失败， HTTP error: %d, reason: %s" %
+                          (exc.response.status_code, exc.response.reason))
             raise
         except requests.exceptions.ConnectionError:
             logging.error("消息发送失败，HTTP connection error!")
@@ -79,13 +83,15 @@ class FeiShutalkChatbot(object):
             try:
                 result = response.json()
             except JSONDecodeError:
-                logging.error("服务器响应异常，状态码：%s，响应内容：%s" % (response.status_code, response.text))
+                logging.error("服务器响应异常，状态码：%s，响应内容：%s" %
+                              (response.status_code, response.text))
                 return {'errcode': 500, 'errmsg': '服务器响应异常'}
             else:
                 logging.debug('发送结果：%s' % result)
                 # 消息发送失败提醒（errcode 不为 0，表示消息发送异常），默认不提醒，开发者可以根据返回的消息发送结果自行判断和处理
                 if self.fail_notice and result.get('errcode', True):
-                    time_now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+                    time_now = time.strftime(
+                        "%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
                     error_data = {
                         "msgtype": "text",
                         "text": {
@@ -97,14 +103,13 @@ class FeiShutalkChatbot(object):
                         }
                     }
                     logging.error("消息发送失败，自动通知：%s" % error_data)
-                    requests.post(self.webhook, headers=self.headers, data=json.dumps(error_data))
+                    requests.post(self.webhook, headers=self.headers,
+                                  data=json.dumps(error_data))
                 return result
 
 
-def send(mark_available=list):
+def send(webhook=str, mark_available=list):
     # webhook 通过飞书群添加机器人可获取
-    webhook = ''
-
     if webhook == '':
         return
 
@@ -128,7 +133,8 @@ def send(mark_available=list):
             if len(yuyue) <= 0:
                 continue
 
-            content = '%s | %s | %s \n' % (hos_name, first_dept_name, second_dept_name)
+            content = '%s | %s | %s \n' % (
+                hos_name, first_dept_name, second_dept_name)
             content = content + "".join(yuyue)
 
             rich_text = {

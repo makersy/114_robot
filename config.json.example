@@ -1,0 +1,6 @@
+{
+    "cookie": "cmi-user-ticket=*****",
+    "require": "2023-06-01,2023-06-02",
+    "os_list": [""],
+    "lark_webhook": ""
+}
