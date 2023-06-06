@@ -14,6 +14,9 @@ cp config.json.example config.json
 - os_list：门诊网址
 - lark_webhook：飞书机器人webhook地址
 
+其他选填：
+- only_weekend: 只关注周末
+
 #### 1. 自主登陆114获取cookie信息
 
 * 114网址：https://www.114yygh.com/

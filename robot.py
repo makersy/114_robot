@@ -1,3 +1,4 @@
+import random
 import requests
 import json
 import time
@@ -23,6 +24,9 @@ exclude_date = []
 require_date = []
 # 飞书webhook
 lark_webhook = ""
+# 仅关注周末
+only_weekend = False
+
 
 def parsing_url(url: str):
     """
@@ -169,13 +173,12 @@ def all_info_of_table(request_os_list: list) -> Table:
     week_of_name = []
     week_of_table_header = []
     now = datetime.datetime.now()
-    week_of_name.append(now.strftime("%Y-%m-%d"))
-    week_of_table_header.append(now.strftime("%Y%m%d-%a"))
 
-    for value in range(1, 7):
+    for value in range(0, 7):
         next_day = now + timedelta(days=value)
-        week_of_name.append(next_day.strftime("%Y-%m-%d"))
-        week_of_table_header.append(next_day.strftime("%Y%m%d-%a"))
+        if not only_weekend or next_day.weekday() >= 5:
+            week_of_name.append(next_day.strftime("%Y-%m-%d"))
+            week_of_table_header.append(next_day.strftime("%a-%m%d"))
 
     table = Table(box=box.ROUNDED, title="[aquamarine3]114 网上预约实时监控({})".format(
         time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))))
@@ -190,9 +193,9 @@ def all_info_of_table(request_os_list: list) -> Table:
     available = []
 
     for data in parsed_data:
-
-        week_of_dict = {0: "[red]未知", 1: "[red]未知", 2: "[red]未知", 3: "[red]未知", 4: "[red]未知", 5: "[red]未知",
-                        6: "[red]未知"}
+        week_of_dict = {}
+        for i in range(0, len(week_of_name)):
+            week_of_dict[i] = "[red]未知"
 
         hospital_dict = {"hosName": data.get("hosName", "未知"),
                          "firstDeptName": data.get("firstDeptName", "未知"),
@@ -213,7 +216,6 @@ def all_info_of_table(request_os_list: list) -> Table:
                     elif calendars["status"] == "AVAILABLE":
                         # 可约
                         week_of_dict[index] = "[green]可预约"
-
                         vc = [value, "可预约"]
                         if value in require_date:
                             yuyue_available.append(
@@ -221,7 +223,7 @@ def all_info_of_table(request_os_list: list) -> Table:
                     elif calendars["status"] == "SOLD_OUT":
                         # 约满
                         week_of_dict[index] = "[indian_red]已约满"
-                    elif calendars["status"] == "TOMORROW_OPEN":
+                    elif calendars["status"] in ["TOMORROW_OPEN", "WAIT_OPEN"]:
                         # 即将放号
                         week_of_dict[index] = "[steel_blue1]即将放号"
                     else:
@@ -231,30 +233,36 @@ def all_info_of_table(request_os_list: list) -> Table:
         hospital_dict["yuyue"] = yuyue_available
         hospital_dict["search_url"] = data.get("search_url", "未知")
         available.append(hospital_dict)
-        table.add_row(data.get("hosName", "未知"), data.get("firstDeptName", "未知"), data.get("secondDeptName", "未知"),
-                      week_of_dict[0], week_of_dict[1],
-                      week_of_dict[2], week_of_dict[3],
-                      week_of_dict[4], week_of_dict[5],
-                      week_of_dict[6])
+        
+        render = [data.get("hosName", "未知"), data.get(
+            "firstDeptName", "未知"), data.get("secondDeptName", "未知")]
+        for i in range(0, len(week_of_dict)):
+            render.append(week_of_dict[i])
+        table.add_row(*render)
 
     # dingding.send(available)
     feishu.send(lark_webhook, available)
     return table
+
 
 if __name__ == '__main__':
     # 解析配置文件
     with open('config.json') as file:
         config = json.load(file)
     cookie = config['cookie']
-    exclude = config['exclude']
     os_list = config['os_list']
-    lark_webhook = config['lark_webhook']
-
     console = Console(color_system='256', style=None)
     headers["Cookie"] = cookie
-    exclude_date = exclude.split(",")
-    require_date = config['require'].split(",")
-    
+
+    if 'only_weekend' in config:
+        only_weekend = config['only_weekend']
+    if 'exclude' in config:
+        exclude_date = config['exclude'].split(",")
+    if 'require' in config:
+        require_date = config['require'].split(",")
+    if 'lark_webhook' in config:
+        lark_webhook = config['lark_webhook']
+
     os_data = None
 
     with console.status("[light_goldenrod3]正在首次加载数据...[/]", spinner="moon"):
@@ -265,7 +273,7 @@ if __name__ == '__main__':
     with Live(console=console, screen=True, auto_refresh=False) as live:
         while True:
             if normal:
-                time.sleep(30)
+                time.sleep(random.randrange(30, 46))
                 os_data = all_info_of_table(os_list)
 
             live.update(os_data, refresh=True)
